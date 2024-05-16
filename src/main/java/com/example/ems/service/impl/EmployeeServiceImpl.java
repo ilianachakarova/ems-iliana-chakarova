@@ -6,12 +6,9 @@ import com.example.ems.domain.Employee;
 import org.springframework.context.annotation.Scope;
 import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.stereotype.Service;
-
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.math.RoundingMode;
 import java.util.List;
-
-import static java.time.temporal.ChronoUnit.YEARS;
 
 @Service
 @Scope(value="prototype", proxyMode= ScopedProxyMode.TARGET_CLASS)
@@ -25,6 +22,10 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Override
     public Employee addEmployee(Employee employee) {
+        Employee existingByNameAndDepartment = employeeRepository.findByNameAndDepartment(employee.getName(), employee.getDepartment());
+        if(existingByNameAndDepartment != null){
+            throw new RuntimeException("Employee Already Exists");
+        }
         return employeeRepository.saveAndFlush(employee);
     }
 
@@ -50,18 +51,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Override
     public BigDecimal calculateBonus(Employee employee) {
-        BigDecimal bonus = BigDecimal.ZERO;
-        long yearsWorked = YEARS.between(employee.getStartDate(), LocalDate.now());
-        int size = employee.getProjects().size();
-        if (yearsWorked >= 3 && size >= 3) {
-            bonus = employee.getSalary().multiply(BigDecimal.valueOf(0.10));
-        }
-        if (yearsWorked >= 3 && size >= 4) {
-            bonus = employee.getSalary().multiply((BigDecimal.valueOf(0.20)));
-        }
-        if (yearsWorked >= 5 && size >= 6) {
-            bonus = employee.getSalary().multiply((BigDecimal.valueOf(0.30)));
-        }
-        return bonus;
+        double percentage = employee.getDepartment().getBonusPercentage();
+        return employee.getSalary().multiply(new BigDecimal(percentage)).setScale(2, RoundingMode.CEILING);
     }
 }
